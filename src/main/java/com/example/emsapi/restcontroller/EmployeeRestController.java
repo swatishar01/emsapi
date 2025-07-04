@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@CrossOrigin(origins = "http://localhost:3001")
 @RestController
 @RequestMapping("/api/employees")
 @Tag(name = "Employee Management", description = "Operations pertaining to employee management")
@@ -28,7 +29,7 @@ public class EmployeeRestController {
 
     @Operation(summary = "Get all employees", description = "Returns a list of all employees in the system")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved all employees")
-    @GetMapping
+    @GetMapping("/allEmployees")
     public List<Employee> getAllEmployees() {
         return employeeService.getAllEmployees();
     }
@@ -68,4 +69,64 @@ public class EmployeeRestController {
         }
     }
 
+    @Operation(summary = "Update an existing employee", description = "Updates an employee's information in the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Employee successfully updated"),
+        @ApiResponse(responseCode = "404", description = "Employee not found"),
+        @ApiResponse(responseCode = "409", description = "Employee with this email already exists"),
+        @ApiResponse(responseCode = "500", description = "Internal server error occurred")
+    })
+    @PutMapping(value = "/update/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> updateEmployee(@PathVariable Integer id, @RequestBody Employee employee) {
+        try {
+            Employee existingEmployee = employeeService.get(id);
+            if (existingEmployee == null) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Employee not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
+            employee.setId(Long.valueOf(id));
+            employeeService.save(employee);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Employee updated successfully");
+            return ResponseEntity.ok(response);
+        } catch (DataIntegrityViolationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "An employee with this email already exists");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "An error occurred while updating the employee");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @Operation(summary = "Delete an employee", description = "Removes an employee from the system")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Employee successfully deleted"),
+        @ApiResponse(responseCode = "404", description = "Employee not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error occurred")
+    })
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteEmployee(@PathVariable Integer id) {
+        try {
+            Employee existingEmployee = employeeService.get(id);
+            if (existingEmployee == null) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Employee not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+
+            employeeService.delete(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Employee deleted successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "An error occurred while deleting the employee");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 }
